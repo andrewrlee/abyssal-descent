@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ABYSSAL DESCENT: GHOST PROTOCOL</title>
+    <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+
+    <div id="hud">
+        <div class="stat">HULL: <span id="hull">100</span>%</div>
+        <div class="stat">O2: <span id="o2">100</span>%</div>
+        <div class="stat">RELICS: <span id="relics">0</span>/8</div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="game" width="800" height="600"></canvas>
+    </div>
+
+    <p style="font-size: 11px; opacity: 0.5; margin-top: 10px;">
+        [ARROWS] PILOT | [SPACE] SONAR | [SHIFT] TORPEDO
+    </p>
+
+    <script type="module" src="./assets/js/gameEngine.mjs" ></script>
+
+</body>
+</html>

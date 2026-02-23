@@ -1,0 +1,42 @@
+{
+  "engine_config": {
+    "canvas_width": 800,
+    "canvas_height": 600,
+    "tile_size": 40,
+    "fps_target": 60,
+    "physics_friction": 0.96
+  },
+  "player_defaults": {
+    "hull_max": 3,
+    "oxygen_max": 100,
+    "oxygen_depletion_rate": 0.03,
+    "max_speed": 2.5,
+    "rotation_speed": 0.06,
+    "collision_radius": 15,
+    "invulnerability_frames": 60
+  },
+  "lighting_params": {
+    "torch_fov": 1.2,
+    "torch_range": 250,
+    "torch_color": "rgba(255, 255, 230, 0.4)",
+    "sonar_cooldown_frames": 300,
+    "ambient_darkness": 0.92
+  },
+  "hazard_params": {
+    "pressure_threshold": 85,
+    "pressure_damage_interval": 500,
+    "beast_aggro_radius": 150,
+    "beast_speed": 1.8,
+    "beast_respawn_ms": 5000
+  },
+  "weapon_params": {
+    "torpedo_speed": 6,
+    "torpedo_life_frames": 80,
+    "max_active_torpedoes": 3
+  },
+  "audio_nodes": {
+    "engine": { "type": "sawtooth", "base_freq": 40, "gain": 0.05 },
+    "sonar": { "type": "sine", "peak_freq": 600, "duration": 1.0 },
+    "impact": { "type": "triangle", "freq": 60, "duration": 0.5 }
+  }
+}

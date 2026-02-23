@@ -1,0 +1,14 @@
+{
+  "name": "abyssal-descent",
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "version": "1.0.0",
+  "main": "index.html",
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "start": "python3 -m http.server"
+  }
+}
