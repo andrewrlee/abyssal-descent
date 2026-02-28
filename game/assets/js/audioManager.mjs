@@ -114,7 +114,6 @@ export class AudioManager {
     osc1.stop(now + 0.15);
     osc2.start(now + 0.05);
     osc2.stop(now + 0.3);
-    console.log("played");
   }
 
   playSinkingSound() {

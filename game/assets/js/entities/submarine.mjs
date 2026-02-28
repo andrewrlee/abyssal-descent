@@ -56,9 +56,22 @@ export class Submarine {
   }
 
   castTorch(levelManager, ctx) {
-    const range = 150;
+    let range = 150;
     const fov = 1.1;
     const rays = 150;
+    let intensity = 0.4; // Default opacity
+
+    // Calculate "Flicker Factor"
+    if (this.hull < 50) {
+      // As hull drops, intensity wavers more
+      const hullPercent = this.hull / 100;
+      // High chance of "dimming" if hull is low
+      if (Math.random() > hullPercent + 0.2) {
+        intensity = Math.random() * 0.1; // Dimming
+        range = 100 + Math.random() * 50; // Beam shortens
+      }
+    }
+
     ctx.beginPath();
     ctx.moveTo(this.x, this.y);
     for (let i = 0; i <= rays; i++) {
@@ -95,7 +108,7 @@ export class Submarine {
       this.y,
       range
     );
-    grad.addColorStop(0, "rgba(102, 252, 241, 0.4)");
+    grad.addColorStop(0, `rgba(102, 252, 241, ${intensity})`);
     grad.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = grad;
     ctx.fill();

@@ -34,7 +34,6 @@ class AbyssEngine {
       this.audioManager.start();
     });
     window.addEventListener("keyup", (e) => (this.keys[e.code] = false));
-
     this.loop();
   }
 
@@ -64,8 +63,8 @@ class AbyssEngine {
     if (
       this.levelManager.relics.update(
         this.sonar.sonarRadius,
-        this.sub.x,
-        this.sub.y
+        this.sub,
+        this.levelManager
       )
     ) {
       this.audioManager.playCollectSound();
@@ -101,13 +100,6 @@ class AbyssEngine {
     this.ctx.fillStyle = "#01050a";
     this.ctx.fillRect(0, 0, 800, 600);
 
-    // 3. Invisible Mask Walls
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.01)";
-    this.levelManager.worldMap.forEach((row, r) =>
-      row.forEach((v, c) => {
-        if (v === 1) this.ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
-      })
-    );
 
     // 4. High-Contrast Sonar Ignition
     this.sonar.draw(this.levelManager, this.ctx, this.ghostCtx, this.sub);

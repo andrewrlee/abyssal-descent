@@ -19,7 +19,7 @@ export const levels = [
       [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     ],
     start: { x: 60, y: 60 },
-    relicCount: 1,
+    relicCount: 4,
     waterColor: "#050a10",
   },
   {
@@ -42,7 +42,7 @@ export const levels = [
       [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     ],
     start: { x: 400, y: 300 },
-    relicCount: 1,
+    relicCount: 8,
     waterColor: "#010203",
   },
 ];
