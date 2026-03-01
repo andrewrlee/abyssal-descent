@@ -3,6 +3,7 @@ import { Gauge } from "./entities/gauge.mjs";
 import { Shake } from "./entities/shake.mjs";
 import { Sonar } from "./entities/sonar.mjs";
 import { Submarine } from "./entities/submarine.mjs";
+import { SurvivalMetrics } from "./entities/survivalmetrics.mjs";
 import { LevelManager } from "./levelManager.mjs";
 
 const TILE = 40;
@@ -26,6 +27,7 @@ class AbyssEngine {
     this.sonar = new Sonar(this.audioManager);
     this.shake = new Shake();
     this.gauge = new Gauge();
+    this.survivalMetrics = new SurvivalMetrics();
 
     this.keys = {};
 
@@ -100,7 +102,6 @@ class AbyssEngine {
     this.ctx.fillStyle = "#01050a";
     this.ctx.fillRect(0, 0, 800, 600);
 
-
     // 4. High-Contrast Sonar Ignition
     this.sonar.draw(this.levelManager, this.ctx, this.ghostCtx, this.sub);
 
@@ -114,6 +115,7 @@ class AbyssEngine {
     this.sub.draw(this.levelManager, this.ctx);
     this.levelManager.relics.draw(document, this.ctx);
     this.gauge.draw(this.ctx, this.sub);
+    this.survivalMetrics.drawSurvivalMeters(this.ctx, this.sub);
 
     this.ctx.restore();
   }
