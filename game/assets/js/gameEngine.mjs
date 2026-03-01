@@ -47,8 +47,10 @@ class AbyssEngine {
         }
         // If touch is on the right: Trigger Sonar
         else {
-          this.sonar.triggerSonar(this.canvas); // Assuming you have a sonar method
-          if (window.navigator.vibrate) window.navigator.vibrate(20); // Haptic click
+          if (this.sonar.triggerSonar(this.canvas)) {
+            this.shake.triggerShake(25);
+            if (window.navigator.vibrate) window.navigator.vibrate(20); // Haptic click
+          }
         }
       },
       { passive: false }
@@ -74,9 +76,25 @@ class AbyssEngine {
       this.sub.speed = 0;
     });
 
-    // window.addEventListener("resize", this.resizeCanvas);
-    // this.resizeCanvas();
+    document.getElementById("start-btn").addEventListener("click", () => {
+      this.enterFullscreen();
+    });
     this.loop();
+  }
+
+  enterFullscreen() {
+    const doc = window.document;
+    const docEl = doc.documentElement;
+
+    const requestFullScreen =
+      docEl.requestFullscreen ||
+      docEl.mozRequestFullScreen ||
+      docEl.webkitRequestFullScreen ||
+      docEl.msRequestFullscreen;
+
+    if (requestFullScreen) {
+      requestFullScreen.call(docEl);
+    }
   }
 
   resizeCanvas() {

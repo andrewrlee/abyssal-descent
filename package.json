@@ -9,6 +9,6 @@
   "dependencies": {},
   "devDependencies": {},
   "scripts": {
-    "start": "python3 -m http.server"
+    "start": "./run.sh"
   }
 }

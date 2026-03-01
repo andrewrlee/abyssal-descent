@@ -1,21 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>ABYSSAL DESCENT: GHOST PROTOCOL</title>
-    <link rel="stylesheet" href="./assets/style.css">
-</head>
-<body>
-
-    <div id="game-container">
-        <canvas id="game" width="800" height="600"></canvas>
+    <link rel="stylesheet" href="./assets/style.css" />
+  </head>
+  <body>
+    <div id="rotate-overlay">
+      <div class="message">
+        <div class="phone-icon">🔄</div>
+        <p>PLEASE ROTATE TO LANDSCAPE</p>
+      </div>
     </div>
-
+    <div id="game-container">
+      <canvas id="game" width="800" height="400"></canvas>
+    </div>
+<input type="submit" id="start-btn" value="fullscreen"/>
     <!-- <p style="font-size: 11px; opacity: 0.5; margin-top: 10px;">
         [ARROWS] PILOT | [SPACE] SONAR | [SHIFT] TORPEDO
     </p> -->
 
-    <script type="module" src="./assets/js/gameEngine.mjs" ></script>
-
-</body>
+    <script type="module" src="./assets/js/gameEngine.mjs"></script>
+  </body>
 </html>
