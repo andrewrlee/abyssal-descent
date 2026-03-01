@@ -43,11 +43,11 @@ class AbyssEngine {
 
         // If touch is on the left: Handle Joystick
         if (t.clientX < window.innerWidth / 2) {
-          this.joystickBase = { x: touch.clientX, y: touch.clientY };
+          this.joystickBase = { x: t.clientX, y: t.clientY };
         }
         // If touch is on the right: Trigger Sonar
         else {
-          this.sonar.triggerSonar(); // Assuming you have a sonar method
+          this.sonar.triggerSonar(this.canvas); // Assuming you have a sonar method
           if (window.navigator.vibrate) window.navigator.vibrate(20); // Haptic click
         }
       },
@@ -73,9 +73,32 @@ class AbyssEngine {
       this.isTouching = false;
       this.sub.speed = 0;
     });
+
+    window.addEventListener("resize", this.resizeCanvas);
+    this.resizeCanvas();
     this.loop();
   }
 
+  resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    // Set the internal drawing resolution (Sharpness)
+    this.canvas.width = width * dpr;
+    this.canvas.height = height * dpr;
+
+    // Set the CSS display size (Layout)
+    this.canvas.style.width = width + "px";
+    this.canvas.style.height = height + "px";
+
+    // Scale the context so 1 unit = 1 pixel regardless of DPR
+    this.ctx.scale(dpr, dpr);
+
+    // Update your game constants
+    // WIDTH = width;
+    // HEIGHT = height;
+  }
   update() {
     if (this.keys["Space"]) {
       if (this.sonar.triggerSonar(this.canvas)) {
