@@ -55,66 +55,213 @@ export class Submarine {
     return false;
   }
 
-  castTorch(levelManager, ctx) {
-    let range = 150;
-    const fov = 1.1;
-    const rays = 150;
-    let intensity = 0.4; // Default opacity
+  drawDetectedWalls(levelManager, ctx, sonarRadius) {
+    const normalizeAngle = (a) => {
+      while (a < -Math.PI) a += Math.PI * 2;
+      while (a > Math.PI) a -= Math.PI * 2;
+      return a;
+    };
 
-    // Calculate "Flicker Factor"
-    if (this.hull < 50) {
-      // As hull drops, intensity wavers more
-      const hullPercent = this.hull / 100;
-      // High chance of "dimming" if hull is low
-      if (Math.random() > hullPercent + 0.2) {
-        intensity = Math.random() * 0.1; // Dimming
-        range = 100 + Math.random() * 50; // Beam shortens
-      }
-    }
+    levelManager.edges.forEach((edge) => {
+      const midX = edge[1].x;
+      const midY = edge[1].y;
+      const dist = Math.hypot(midX - this.x, midY - this.y);
 
-    ctx.beginPath();
-    ctx.moveTo(this.x, this.y);
-    for (let i = 0; i <= rays; i++) {
-      let angle = this.angle - fov / 2 + (i / rays) * fov;
-      let dx = Math.cos(angle),
-        dy = Math.sin(angle);
-      let dist = range;
+      // 1. Detection Logic
+      const isHitBySonar = Math.abs(dist - sonarRadius) < 20;
+      const angleToEdge = Math.atan2(midY - this.y, midX - this.x);
+      const angleDiff = Math.abs(normalizeAngle(angleToEdge - this.angle));
+      const isHitByTorch = dist < 180 && angleDiff < 0.55;
 
-      for (let d = 0; d < range; d += 8) {
-        let checkX = Math.floor((this.x + dx * d) / TILE);
-        let checkY = Math.floor((this.y + dy * d) / TILE);
-        if (!levelManager.isWater(checkX, checkY)) {
-          for (let f = d - 8; f <= d; f++) {
-            if (
-              !levelManager.isWater(
-                Math.floor((this.x + dx * f) / TILE),
-                Math.floor((this.y + dy * f) / TILE)
-              )
-            ) {
-              dist = f - 0.5;
+      // 2. If it's currently hit, we check LOS and set alpha to max
+      if (isHitBySonar || isHitByTorch) {
+        let isVisible = true;
+
+        if (isHitByTorch && isVisible) {
+          // Torch provides a high alpha, but it decays FAST
+          edge.alpha = 0.9;
+          edge.lastHitBy = "torch";
+        } else if (isHitBySonar && isVisible) {
+          // Sonar provides a "super-charge" that decays SLOWER
+          edge.alpha = 1.2;
+          edge.lastHitBy = "sonar";
+        }
+        const steps = Math.max(1, Math.floor(dist / 12));
+
+        for (let i = 1; i < steps; i++) {
+          const checkX = this.x + (midX - this.x) * (i / steps);
+          const checkY = this.y + (midY - this.y) * (i / steps);
+          const gridX = Math.floor(checkX / TILE);
+          const gridY = Math.floor(checkY / TILE);
+
+          if (!levelManager.isWater(gridX, gridY)) {
+            if (gridX !== edge.c || gridY !== edge.r) {
+              isVisible = false;
               break;
             }
           }
-          break;
+        }
+
+        if (isVisible) {
+          if (isVisible) {
+            ctx.save();
+
+            // --- STEP 1: ENGINE VIBRATION ---
+            // Adds a tiny jitter to the world based on sub movement
+            const shake = (Math.random() - 0.5) * 0.7;
+            ctx.translate(shake, shake);
+
+            // --- STEP 2: ANALOG COLORS ---
+            const baseColor = isHitBySonar ? "#66fcf1" : "#f5edce";
+            ctx.strokeStyle = baseColor;
+
+            // Create a flickering alpha for "Signal Interference"
+            const flicker = 0.7 + Math.random() * 0.3;
+            const falloff = 1 - Math.min(1, dist / 220);
+            ctx.globalAlpha = edge.alpha * flicker * falloff;
+
+            // --- STEP 3: THE JITTERED PATH ---
+            // Instead of a straight line, we add a tiny midpoint offset
+            ctx.beginPath();
+            ctx.moveTo(edge[0].x, edge[0].y);
+
+            // Midpoint with random "roughness"
+            const j = 1.2; // Jitter amount
+            const mx = edge[1].x + (Math.random() - 0.5) * j;
+            const my = edge[1].y + (Math.random() - 0.5) * j;
+
+            ctx.lineTo(mx, my);
+            ctx.lineTo(edge[2].x, edge[2].y);
+
+            // --- STEP 4: MULTI-PASS STROKE (The Glow) ---
+            // Pass A: Wide, faint glow (The Phosphor)
+            ctx.lineWidth = isHitBySonar ? 2 : 1;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = baseColor;
+            ctx.stroke();
+
+            // Pass B: Sharp, bright core (The Signal)
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 0.8;
+            ctx.strokeStyle = "#ffffff"; // Bright white center
+            ctx.globalAlpha *= 0.8;
+            ctx.stroke();
+
+            ctx.restore();
+          }
         }
       }
-      ctx.lineTo(this.x + dx * dist, this.y + dy * dist);
+    });
+  }
+
+  getIntersection(ray, segment) {
+    const x1 = ray.x1,
+      y1 = ray.y1,
+      x2 = ray.x2,
+      y2 = ray.y2;
+    const x3 = segment.x1,
+      y3 = segment.y1,
+      x4 = segment.x2,
+      y4 = segment.y2;
+
+    const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (den === 0) return null; // Parallel
+
+    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+    const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
+
+    // If t is between 0-1, the intersection is on the ray
+    // If u is between 0-1, the intersection is on the wall segment
+    if (t > 0 && t <= 1 && u >= 0 && u <= 1) {
+      return t; // Returns the percentage along the ray (0 to 1)
     }
+    return null;
+  }
+
+  castTorch(levelManager, ctx) {
+    const range = 180;
+    const fov = 1.1;
+    const rays = 120;
+
+    // 1. Pre-filter edges (only check edges within torch range)
+    const subAngle = this.angle;
+    const normalizeAngle = (a) => {
+      while (a < -Math.PI) a += Math.PI * 2;
+      while (a > Math.PI) a -= Math.PI * 2;
+      return a;
+    };
+    const nearbyEdges = levelManager.edges.filter((e) => {
+      const dx = e[1].x - this.x;
+      const dy = e[1].y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist > range + 20) return false;
+
+      // Dot product to check if the edge is "in front" of the sub
+      const angleToEdge = Math.atan2(dy, dx);
+      const diff = Math.abs(normalizeAngle(angleToEdge - subAngle));
+      return diff < 1.6; // Only check edges in a 180-degree forward arc
+    });
+
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+
+    for (let i = 0; i <= rays; i++) {
+      let angle = this.angle - fov / 2 + (i / rays) * fov;
+      let rayEnd = {
+        x1: this.x,
+        y1: this.y,
+        x2: this.x + Math.cos(angle) * range,
+        y2: this.y + Math.sin(angle) * range,
+      };
+
+      let closestT = 1; // 1 means the full range of the torch
+
+      // Check this ray against every craggy segment
+      nearbyEdges.forEach((edge) => {
+        // Check both segments of your jagged edge (p0-p1 and p1-p2)
+        const seg1 = {
+          x1: edge[0].x,
+          y1: edge[0].y,
+          x2: edge[1].x,
+          y2: edge[1].y,
+        };
+        const seg2 = {
+          x1: edge[1].x,
+          y1: edge[1].y,
+          x2: edge[2].x,
+          y2: edge[2].y,
+        };
+
+        const t1 = this.getIntersection(rayEnd, seg1);
+        if (t1 !== null && t1 < closestT) closestT = t1;
+
+        const t2 = this.getIntersection(rayEnd, seg2);
+        if (t2 !== null && t2 < closestT) closestT = t2;
+      });
+
+      const finalX = this.x + Math.cos(angle) * (range * closestT);
+      const finalY = this.y + Math.sin(angle) * (range * closestT);
+      ctx.lineTo(finalX, finalY);
+    }
+
+    // Gradient and fill logic...
     let grad = ctx.createRadialGradient(
       this.x,
       this.y,
-      5,
+      0,
       this.x,
       this.y,
       range
     );
-    grad.addColorStop(0, `rgba(102, 252, 241, ${intensity})`);
-    grad.addColorStop(1, "rgba(0,0,0,0)");
+    grad.addColorStop(0, `rgba(102, 252, 241, 0.4)`);
+    grad.addColorStop(1, "transparent");
     ctx.fillStyle = grad;
     ctx.fill();
   }
 
   draw(levelManager, ctx) {
+    // this.drawDetectedWalls(levelManager, ctx);
     this.castTorch(levelManager, ctx);
     ctx.save();
     ctx.translate(this.x, this.y);
@@ -169,13 +316,5 @@ export class Submarine {
     ctx.fill();
 
     ctx.restore();
-    this.particles.forEach((p, i) => {
-      p.life -= 0.02;
-      ctx.fillStyle = `rgba(102, 252, 241, ${p.life * 0.5})`;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
-      if (p.life <= 0) this.particles.splice(i, 1);
-    });
   }
 }
