@@ -76,16 +76,6 @@ export class Submarine {
       // 2. If it's currently hit, we check LOS and set alpha to max
       if (isHitBySonar || isHitByTorch) {
         let isVisible = true;
-
-        if (isHitByTorch && isVisible) {
-          // Torch provides a high alpha, but it decays FAST
-          edge.alpha = 0.9;
-          edge.lastHitBy = "torch";
-        } else if (isHitBySonar && isVisible) {
-          // Sonar provides a "super-charge" that decays SLOWER
-          edge.alpha = 1.2;
-          edge.lastHitBy = "sonar";
-        }
         const steps = Math.max(1, Math.floor(dist / 12));
 
         for (let i = 1; i < steps; i++) {
@@ -103,52 +93,20 @@ export class Submarine {
         }
 
         if (isVisible) {
-          if (isVisible) {
-            ctx.save();
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(edge[0].x, edge[0].y);
 
-            // --- STEP 1: ENGINE VIBRATION ---
-            // Adds a tiny jitter to the world based on sub movement
-            const shake = (Math.random() - 0.5) * 0.7;
-            ctx.translate(shake, shake);
+          ctx.lineTo(edge[1].x, edge[1].y);
+          ctx.lineTo(edge[2].x, edge[2].y);
 
-            // --- STEP 2: ANALOG COLORS ---
-            const baseColor = isHitBySonar ? "#66fcf1" : "#f5edce";
-            ctx.strokeStyle = baseColor;
+          ctx.shadowBlur = 0;
+          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = "#655a5a"; // Bright white center
+          ctx.globalAlpha *= 0.8;
+          ctx.stroke();
 
-            // Create a flickering alpha for "Signal Interference"
-            const flicker = 0.7 + Math.random() * 0.3;
-            const falloff = 1 - Math.min(1, dist / 220);
-            ctx.globalAlpha = edge.alpha * flicker * falloff;
-
-            // --- STEP 3: THE JITTERED PATH ---
-            // Instead of a straight line, we add a tiny midpoint offset
-            ctx.beginPath();
-            ctx.moveTo(edge[0].x, edge[0].y);
-
-            // Midpoint with random "roughness"
-            const j = 1.2; // Jitter amount
-            const mx = edge[1].x + (Math.random() - 0.5) * j;
-            const my = edge[1].y + (Math.random() - 0.5) * j;
-
-            ctx.lineTo(mx, my);
-            ctx.lineTo(edge[2].x, edge[2].y);
-
-            // --- STEP 4: MULTI-PASS STROKE (The Glow) ---
-            // Pass A: Wide, faint glow (The Phosphor)
-            ctx.lineWidth = isHitBySonar ? 2 : 1;
-            ctx.shadowBlur = 12;
-            ctx.shadowColor = baseColor;
-            ctx.stroke();
-
-            // Pass B: Sharp, bright core (The Signal)
-            ctx.shadowBlur = 0;
-            ctx.lineWidth = 0.8;
-            ctx.strokeStyle = "#ffffff"; // Bright white center
-            ctx.globalAlpha *= 0.8;
-            ctx.stroke();
-
-            ctx.restore();
-          }
+          ctx.restore();
         }
       }
     });
@@ -181,7 +139,7 @@ export class Submarine {
   castTorch(levelManager, ctx) {
     const range = 180;
     const fov = 1.1;
-    const rays = 120;
+    const rays = 60;
 
     // 1. Pre-filter edges (only check edges within torch range)
     const subAngle = this.angle;
@@ -261,59 +219,84 @@ export class Submarine {
   }
 
   draw(levelManager, ctx) {
-    // this.drawDetectedWalls(levelManager, ctx);
+    this.drawDetectedWalls(levelManager, ctx);
     this.castTorch(levelManager, ctx);
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
 
-    // 1. Propeller Animation (oscillates based on speed)
-    if (this.speed !== 0) {
-      ctx.save();
-      ctx.strokeStyle = "#45a29e";
-      ctx.lineWidth = 2;
-      const propOsc = Math.sin(Date.now() * 0.05) * 8; // Flickers fast
-      ctx.beginPath();
-      ctx.moveTo(-15, -propOsc);
-      ctx.lineTo(-15, propOsc);
-      ctx.stroke();
-      ctx.restore();
-    }
+    // 1. MAIN HULL (The "Rusty" Body)
+    // We draw two halves to make it look like separate welded plates
+    ctx.fillStyle = "#1a222d"; // Darker, iron-like color
+    ctx.strokeStyle = "#45a29e"; // Dull teal (oxidized copper look)
+    ctx.lineWidth = 1.5;
 
-    // 2. The Hull (Main Body)
-    // Create a linear gradient to give a 3D "top-down" metallic look
-    let hullGrad = ctx.createLinearGradient(0, -8, 0, 8);
-    hullGrad.addColorStop(0, "#1f2833"); // Shadow edge
-    hullGrad.addColorStop(0.5, "#45a29e"); // Highlight center
-    hullGrad.addColorStop(1, "#1f2833"); // Shadow edge
-
-    ctx.fillStyle = hullGrad;
+    // Back Plate
     ctx.beginPath();
-    // Tapered body: x, y, radiusX, radiusY, rotation, start, end
-    ctx.ellipse(0, 0, 18, 9, 0, 0, Math.PI * 2);
+    ctx.ellipse(-5, 0, 12, 10, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#66fcf1";
-    ctx.lineWidth = 1;
     ctx.stroke();
 
-    // 3. The Sail (Conning Tower)
-    ctx.fillStyle = "#1f2833";
-    ctx.fillRect(-2, -4, 6, 8);
-    ctx.strokeStyle = "#66fcf1";
-    ctx.strokeRect(-2, -4, 6, 8);
-
-    // 4. Front Porthole / Lens
-    ctx.fillStyle = this.invuln > 0 ? "#ff0055" : "#66fcf1"; // Red flash if damaged
+    // Front Plate (Overlapping to show a seam)
     ctx.beginPath();
-    ctx.arc(12, 0, 3, 0, Math.PI * 2);
+    ctx.ellipse(8, 0, 10, 8, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
 
-    // 5. Light Glow (Lens Flare)
-    ctx.shadowBlur = 10;
+    // 2. RIVETS (The "Rickety" Detail)
+    ctx.fillStyle = "#45a29e";
+    for(let i = 0; i < 8; i++) {
+        const rAngle = (i / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(-5 + Math.cos(rAngle) * 10, Math.sin(rAngle) * 8, 1, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 3. THE "JUNK" SAIL (Conning Tower)
+    // Make it look tilted or uneven
+    ctx.save();
+    ctx.rotate(-0.05); // Slight "crooked" lean
+    ctx.fillStyle = "#1a222d";
+    ctx.fillRect(-4, -10, 8, 10);
+    ctx.strokeRect(-4, -10, 8, 10);
+    
+    // Periscope (Thin, shaky wire)
+    ctx.beginPath();
+    ctx.moveTo(0, -10);
+    ctx.lineTo(0, -15);
+    ctx.lineTo(3, -15);
+    ctx.stroke();
+    ctx.restore();
+
+    // 4. EXPOSED PIPES (The "Unfinished" look)
+    ctx.strokeStyle = "#66fcf1";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-15, 4);
+    ctx.bezierCurveTo(-18, 8, -10, 12, -5, 8); // A loose wire/pipe hanging off
+    ctx.stroke();
+
+    // 5. THE PORTHOLE (Flickering Light)
+    // Give it a "dying bulb" feel
+    const flicker = Math.random() > 0.95 ? 0.3 : 1;
+    ctx.fillStyle = this.invuln > 0 ? "#ff0055" : `rgba(102, 252, 241, ${flicker})`;
+    ctx.shadowBlur = 15 * flicker;
     ctx.shadowColor = "#66fcf1";
     ctx.beginPath();
-    ctx.arc(12, 0, 2, 0, Math.PI * 2);
+    ctx.arc(14, 0, 4, 0, Math.PI * 2);
     ctx.fill();
+
+    // 6. REAR PROPELLER (The "Wobbly" fan)
+    const propSpin = (Date.now() * 0.02) % (Math.PI * 2);
+    ctx.save();
+    ctx.translate(-18, 0);
+    ctx.rotate(propSpin);
+    ctx.strokeStyle = "#45a29e";
+    ctx.beginPath();
+    ctx.moveTo(0, -6); ctx.lineTo(0, 6);
+    ctx.moveTo(-2, 0); ctx.lineTo(2, 0);
+    ctx.stroke();
+    ctx.restore();
 
     ctx.restore();
   }

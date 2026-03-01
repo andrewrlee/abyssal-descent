@@ -6,8 +6,6 @@ import { Submarine } from "./entities/submarine.mjs";
 import { SurvivalMetrics } from "./entities/survivalmetrics.mjs";
 import { LevelManager } from "./levelManager.mjs";
 
-const TILE = 40;
-
 class AbyssEngine {
   constructor() {
     this.canvas = document.getElementById("game");
@@ -36,6 +34,32 @@ class AbyssEngine {
       this.audioManager.start();
     });
     window.addEventListener("keyup", (e) => (this.keys[e.code] = false));
+    // Add a Touch Listener to your canvas
+    this.canvas.addEventListener("touchstart", (e) => {
+      const touch = e.touches[0];
+      this.joystickBase = { x: touch.clientX, y: touch.clientY };
+      this.isTouching = true;
+    });
+
+    this.canvas.addEventListener("touchmove", (e) => {
+      if (!this.isTouching) return;
+      const touch = e.touches[0];
+
+      // Calculate distance from base to current finger position
+      const dx = touch.clientX - this.joystickBase.x;
+      const dy = touch.clientY - this.joystickBase.y;
+      const angle = Math.atan2(dy, dx);
+      const dist = Math.min(Math.hypot(dx, dy), 50); // Cap the pull distance
+
+      // Map this to submarine controls
+      this.sub.angle = angle;
+      this.sub.thrust = dist / 50; // 0 to 1 thrust
+    });
+
+    this.canvas.addEventListener("touchend", () => {
+      this.isTouching = false;
+      this.sub.thrust = 0;
+    });
     this.loop();
   }
 

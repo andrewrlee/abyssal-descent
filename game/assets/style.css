@@ -34,3 +34,10 @@ canvas {
   text-shadow: 0 0 8px #66fcf1;
   font-weight: bold;
 }
+
+body, canvas {
+    position: fixed;
+    overflow: hidden;
+    touch-action: none; /* Prevents zooming and scrolling */
+    user-select: none;
+}
