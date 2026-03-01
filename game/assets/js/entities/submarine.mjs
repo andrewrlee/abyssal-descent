@@ -19,12 +19,38 @@ export class Submarine {
     this.hull = 100;
   }
 
-  update(levelManager, keys) {
-    if (keys["ArrowLeft"]) this.angle -= 0.045;
-    if (keys["ArrowRight"]) this.angle += 0.045;
-    if (keys["ArrowUp"]) this.speed = Math.min(this.speed + 0.08, 2.2);
-    else this.speed *= 0.98;
+  update(levelManager, keys, joystick) {
+    // 1. Determine Input Thrust (0 to 1)
+    let inputThrust = 0;
+    if (keys["ArrowUp"]) {
+      inputThrust = 1.0;
+    } else if (joystick && joystick.active) {
+      inputThrust = joystick.thrust;
+    }
 
+    // 2. Handle Rotation (Mobile vs Keyboard)
+    if (joystick && joystick.active) {
+      // Smoothly rotate toward the joystick angle
+      let angleDiff = joystick.angle - this.angle;
+      // Normalize to prevent the sub from spinning 360 degrees the "long way"
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+      this.angle += angleDiff * 0.08; // Damped rotation for a "heavy" feel
+    } else {
+      if (keys["ArrowLeft"]) this.angle -= 0.045;
+      if (keys["ArrowRight"]) this.angle += 0.045;
+    }
+
+    // 3. Apply Acceleration based on inputThrust
+    if (inputThrust > 0) {
+      // Variable acceleration: pulling the stick halfway moves the sub slowly
+      this.speed = Math.min(this.speed + 0.08 * inputThrust, 2.2);
+    } else {
+      this.speed *= 0.98; // Natural water drag
+    }
+
+    // 4. Collision Detection & Movement
     let nextX = this.x + Math.cos(this.angle) * this.speed;
     let nextY = this.y + Math.sin(this.angle) * this.speed;
 
@@ -34,24 +60,30 @@ export class Submarine {
       this.x = nextX;
       this.y = nextY;
     } else {
-      // Collision!
+      // CRASH LOGIC
       if (this.invuln <= 0 && Math.abs(this.speed) > 0.4) {
         this.hull -= 10;
         this.invuln = 60;
-        this.speed = -0.8;
-        return true;
+        this.speed = -0.8; // Bounce back
+
+        // MOBILE HAPTICS: Shake the phone on impact
+        if (window.navigator.vibrate) window.navigator.vibrate([50, 30, 50]);
+
+        return true; // Signal a collision occurred
       }
+      this.speed = 0; // Stop if hitting a wall at low speed
     }
-    if (Math.abs(this.speed) > 0.5 && Math.random() > 0.7) {
-      this.particles.push({
-        x: this.x - Math.cos(this.angle) * 15,
-        y: this.y - Math.sin(this.angle) * 15,
-        life: 1.0,
-        size: Math.random() * 3,
-      });
-    }
+
+    // 5. Vital Systems & Rickety Engine Shake
     if (this.invuln > 0) this.invuln--;
     this.o2 -= 0.008;
+
+    // Add a tiny random jitter to x/y if the engine is pushing hard
+    if (inputThrust > 0.8) {
+      this.x += (Math.random() - 0.5) * 0.5;
+      this.y += (Math.random() - 0.5) * 0.5;
+    }
+
     return false;
   }
 
@@ -245,11 +277,17 @@ export class Submarine {
 
     // 2. RIVETS (The "Rickety" Detail)
     ctx.fillStyle = "#45a29e";
-    for(let i = 0; i < 8; i++) {
-        const rAngle = (i / 8) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.arc(-5 + Math.cos(rAngle) * 10, Math.sin(rAngle) * 8, 1, 0, Math.PI * 2);
-        ctx.fill();
+    for (let i = 0; i < 8; i++) {
+      const rAngle = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(
+        -5 + Math.cos(rAngle) * 10,
+        Math.sin(rAngle) * 8,
+        1,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
     }
 
     // 3. THE "JUNK" SAIL (Conning Tower)
@@ -259,7 +297,7 @@ export class Submarine {
     ctx.fillStyle = "#1a222d";
     ctx.fillRect(-4, -10, 8, 10);
     ctx.strokeRect(-4, -10, 8, 10);
-    
+
     // Periscope (Thin, shaky wire)
     ctx.beginPath();
     ctx.moveTo(0, -10);
@@ -279,7 +317,8 @@ export class Submarine {
     // 5. THE PORTHOLE (Flickering Light)
     // Give it a "dying bulb" feel
     const flicker = Math.random() > 0.95 ? 0.3 : 1;
-    ctx.fillStyle = this.invuln > 0 ? "#ff0055" : `rgba(102, 252, 241, ${flicker})`;
+    ctx.fillStyle =
+      this.invuln > 0 ? "#ff0055" : `rgba(102, 252, 241, ${flicker})`;
     ctx.shadowBlur = 15 * flicker;
     ctx.shadowColor = "#66fcf1";
     ctx.beginPath();
@@ -293,8 +332,10 @@ export class Submarine {
     ctx.rotate(propSpin);
     ctx.strokeStyle = "#45a29e";
     ctx.beginPath();
-    ctx.moveTo(0, -6); ctx.lineTo(0, 6);
-    ctx.moveTo(-2, 0); ctx.lineTo(2, 0);
+    ctx.moveTo(0, -6);
+    ctx.lineTo(0, 6);
+    ctx.moveTo(-2, 0);
+    ctx.lineTo(2, 0);
     ctx.stroke();
     ctx.restore();
 

@@ -11,8 +11,7 @@ export class Relics {
     return sizeBefore != this.relics.length;
   }
 
-  draw(document, ctx) {
-    document.getElementById("relics").innerText = 8 - this.relics.length;
+  draw(ctx) {
     this.relics.forEach((r) => r.draw(ctx));
   }
 }

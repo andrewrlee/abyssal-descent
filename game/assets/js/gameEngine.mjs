@@ -35,11 +35,24 @@ class AbyssEngine {
     });
     window.addEventListener("keyup", (e) => (this.keys[e.code] = false));
     // Add a Touch Listener to your canvas
-    this.canvas.addEventListener("touchstart", (e) => {
-      const touch = e.touches[0];
-      this.joystickBase = { x: touch.clientX, y: touch.clientY };
-      this.isTouching = true;
-    });
+    this.canvas.addEventListener(
+      "touchstart",
+      (e) => {
+        this.isTouching = true;
+        const t = e.touches[0];
+
+        // If touch is on the left: Handle Joystick
+        if (t.clientX < window.innerWidth / 2) {
+          this.joystickBase = { x: touch.clientX, y: touch.clientY };
+        }
+        // If touch is on the right: Trigger Sonar
+        else {
+          this.sonar.triggerSonar(); // Assuming you have a sonar method
+          if (window.navigator.vibrate) window.navigator.vibrate(20); // Haptic click
+        }
+      },
+      { passive: false }
+    );
 
     this.canvas.addEventListener("touchmove", (e) => {
       if (!this.isTouching) return;
@@ -53,12 +66,12 @@ class AbyssEngine {
 
       // Map this to submarine controls
       this.sub.angle = angle;
-      this.sub.thrust = dist / 50; // 0 to 1 thrust
+      this.sub.speed = dist / 50; // 0 to 1 thrust
     });
 
     this.canvas.addEventListener("touchend", () => {
       this.isTouching = false;
-      this.sub.thrust = 0;
+      this.sub.speed = 0;
     });
     this.loop();
   }
@@ -69,7 +82,7 @@ class AbyssEngine {
         this.shake.triggerShake(25);
       }
     }
-    if (this.sub.update(this.levelManager, this.keys)) {
+    if (this.sub.update(this.levelManager, this.keys, this.joystickBase)) {
       this.audioManager.playSound(80, "triangle", 0.4, 0.2);
       this.shake.triggerShake(15);
     }
@@ -106,14 +119,6 @@ class AbyssEngine {
     this.ghostCtx.fillRect(0, 0, 800, 600);
 
     this.levelManager.checkWinCondition();
-
-    document.getElementById("hull").innerText = Math.floor(
-      Math.max(0, this.sub.hull)
-    );
-    document.getElementById("o2").innerText = Math.max(
-      0,
-      Math.floor(this.sub.o2)
-    );
   }
 
   draw() {
@@ -137,7 +142,7 @@ class AbyssEngine {
 
     // 6. Final Layer (Relics & Sub)
     this.sub.draw(this.levelManager, this.ctx);
-    this.levelManager.relics.draw(document, this.ctx);
+    this.levelManager.relics.draw(this.ctx);
     this.gauge.draw(this.ctx, this.sub);
     this.survivalMetrics.drawSurvivalMeters(this.ctx, this.sub);
 
