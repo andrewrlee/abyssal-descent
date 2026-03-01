@@ -74,8 +74,8 @@ class AbyssEngine {
       this.sub.speed = 0;
     });
 
-    window.addEventListener("resize", this.resizeCanvas);
-    this.resizeCanvas();
+    // window.addEventListener("resize", this.resizeCanvas);
+    // this.resizeCanvas();
     this.loop();
   }
 

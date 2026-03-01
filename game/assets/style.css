@@ -35,9 +35,19 @@ canvas {
   font-weight: bold;
 }
 
-body, canvas {
-    position: fixed;
-    overflow: hidden;
-    touch-action: none; /* Prevents zooming and scrolling */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Prevents scrollbars */
+    background: #0b0c10;
+    position: fixed; /* Prevents "pull-to-refresh" on Chrome */
+}
+
+canvas {
+    display: block;
+    touch-action: none; /* CRITICAL: Stops browser from zooming/scrolling */
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
