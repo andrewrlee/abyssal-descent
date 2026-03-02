@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none, viewport-fit=cover"
+    />
+    <title>Abyssal Maze: Centered Edition</title>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100dvh;
+        overflow: hidden;
+        background: #050508;
+        position: fixed;
+        font-family: monospace;
+      }
+      canvas {
+        display: block;
+        touch-action: none;
+      }
+      #hud {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        color: #66fcf1;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      <div id="stats">HULL: 100% | O2: 100%</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      let WIDTH, HEIGHT, DPR;
+      const TILE = 80;
+      const keys = {};
+
+      // --- MAZE DATA ---
+      const mazeSize = 30;
+      const grid = [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1],
+        [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1],
+        [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1],
+        [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      ];
+      grid[1][1] = 0; // Spawn point
+
+      // --- JOYSTICK ---
+      const joystick = {
+        active: false,
+        baseX: 0,
+        baseY: 0,
+        stickX: 0,
+        stickY: 0,
+        thrust: 0,
+        angle: 0,
+      };
+
+      // --- SUBMARINE ---
+      const sub = {
+        x: 120,
+        y: 120,
+        angle: 0,
+        speed: 0,
+        hull: 100,
+        o2: 100,
+        invuln: 0,
+        update() {
+          let thrustInput = keys["ArrowUp"]
+            ? 1
+            : joystick.active
+            ? joystick.thrust
+            : 0;
+          if (joystick.active) {
+            let diff = joystick.angle - this.angle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            this.angle += diff * 0.1;
+          } else {
+            if (keys["ArrowLeft"]) this.angle -= 0.05;
+            if (keys["ArrowRight"]) this.angle += 0.05;
+          }
+
+          this.speed =
+            thrustInput > 0
+              ? Math.min(this.speed + 0.1, 3.5)
+              : this.speed * 0.97;
+
+          let nx = this.x + Math.cos(this.angle) * this.speed;
+          let ny = this.y + Math.sin(this.angle) * this.speed;
+
+          // Simple Tile Collision
+          if (grid[Math.floor(nx / TILE)][Math.floor(ny / TILE)] === 0) {
+            this.x = nx;
+            this.y = ny;
+          } else {
+            if (this.invuln <= 0 && this.speed > 0.5) {
+              this.hull -= 10;
+              this.invuln = 30;
+              if (window.navigator.vibrate) window.navigator.vibrate(50);
+            }
+            this.speed *= -0.4;
+          }
+          this.o2 -= 0.005;
+          if (this.invuln > 0) this.invuln--;
+        },
+      };
+
+      // --- RENDERING ---
+      function drawMaze() {
+        ctx.fillStyle = "#1a222d";
+        ctx.strokeStyle = "#45a29e";
+        ctx.lineWidth = 2;
+
+        for (let x = 0; x < mazeSize; x++) {
+          for (let y = 0; y < mazeSize; y++) {
+            if (grid[x][y] === 1) {
+              ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+              ctx.strokeRect(x * TILE, y * TILE, TILE, TILE);
+            }
+          }
+        }
+      }
+
+      function drawTorch() {
+        const rays = 60;
+        const dist = 250;
+        const fov = 1.2;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(sub.x, sub.y);
+
+        for (let i = 0; i <= rays; i++) {
+          let rayAngle = sub.angle - fov / 2 + (i / rays) * fov;
+          let rx = sub.x,
+            ry = sub.y;
+
+          // Ray marching (simplified for mobile)
+          for (let step = 0; step < dist; step += 10) {
+            rx += Math.cos(rayAngle) * 10;
+            ry += Math.sin(rayAngle) * 10;
+            if (grid[Math.floor(rx / TILE)]?.[Math.floor(ry / TILE)] === 1)
+              break;
+          }
+          ctx.lineTo(rx, ry);
+        }
+        ctx.closePath();
+
+        // Masking
+        ctx.clip();
+        drawMaze();
+
+        // Flicker Effect
+        const flicker = Math.random() > 0.97 ? 0.5 : 1;
+        ctx.fillStyle = `rgba(102, 252, 241, ${0.1 * flicker})`;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawSub() {
+        ctx.save();
+        ctx.translate(sub.x, sub.y);
+        ctx.rotate(sub.angle);
+
+        // Hull
+        ctx.fillStyle = "#1f2833";
+        ctx.strokeStyle = "#66fcf1";
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Porthole
+        ctx.fillStyle = sub.invuln > 0 ? "#f00" : "#66fcf1";
+        ctx.beginPath();
+        ctx.arc(14, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function loop() {
+        sub.update();
+
+        // Reset and Background
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(DPR, DPR);
+        ctx.fillStyle = "#050508";
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // CAMERA CENTERED ON SUB
+        ctx.translate(WIDTH / 2, HEIGHT / 2);
+        ctx.translate(-sub.x, -sub.y);
+
+        drawTorch(); // Includes Maze drawing via clipping
+        drawSub();
+
+        // HUD & JOYSTICK (Static)
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(DPR, DPR);
+        if (joystick.active) {
+          ctx.strokeStyle = "rgba(102,252,241,0.2)";
+          ctx.beginPath();
+          ctx.arc(joystick.baseX, joystick.baseY, 50, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(102,252,241,0.4)";
+          ctx.beginPath();
+          ctx.arc(joystick.stickX, joystick.stickY, 20, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        document.getElementById("stats").innerText = `HULL: ${Math.max(
+          0,
+          sub.hull
+        )}% | O2: ${Math.max(0, Math.floor(sub.o2))}%`;
+        requestAnimationFrame(loop);
+      }
+
+      // --- SETUP ---
+      function resize() {
+        DPR = window.devicePixelRatio || 1;
+        WIDTH = window.innerWidth;
+        HEIGHT = window.innerHeight;
+        canvas.width = WIDTH * DPR;
+        canvas.height = HEIGHT * DPR;
+        canvas.style.width = WIDTH + "px";
+        canvas.style.height = HEIGHT + "px";
+      }
+
+      window.addEventListener("resize", resize);
+      window.addEventListener("keydown", (e) => (keys[e.code] = true));
+      window.addEventListener("keyup", (e) => (keys[e.code] = false));
+      canvas.addEventListener("touchstart", (e) => {
+        const t = e.touches[0];
+        joystick.active = true;
+        joystick.baseX = joystick.stickX = t.clientX;
+        joystick.baseY = joystick.stickY = t.clientY;
+      });
+      canvas.addEventListener("touchmove", (e) => {
+        if (!joystick.active) return;
+        const t = e.touches[0];
+        const dx = t.clientX - joystick.baseX;
+        const dy = t.clientY - joystick.baseY;
+        const d = Math.min(Math.hypot(dx, dy), 50);
+        joystick.angle = Math.atan2(dy, dx);
+        joystick.thrust = d / 50;
+        joystick.stickX = joystick.baseX + Math.cos(joystick.angle) * d;
+        joystick.stickY = joystick.baseY + Math.sin(joystick.angle) * d;
+      });
+      canvas.addEventListener("touchend", () => (joystick.active = false));
+
+      resize();
+      loop();
+    </script>
+  </body>
+</html>

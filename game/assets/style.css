@@ -1,91 +1,15 @@
-body {
-  background: #010203;
-  color: #66fcf1;
-  font-family: "Courier New", monospace;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+body,
+html {
   margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100dvh;
   overflow: hidden;
-}
-#game-container {
-  position: relative;
-  margin-top: 10px;
-    /* width: 800px;
-  height: 400px; */
-  box-shadow: 0 0 50px #000;
+  background: #050508;
+  position: fixed;
+  font-family: monospace;
 }
 canvas {
-  border: 2px solid #1f2833;
-  /* width: 800px;
-  height: 400px; */
-  background: #000;
-}
-.sonar-glitch {
-  filter: hue-rotate(90deg) contrast(1.8) brightness(1.5);
-}
-#hud {
-  width: 800px;
-  display: flex;
-  justify-content: space-between;
-  padding: 15px;
-  background: rgba(11, 12, 16, 0.9);
-  border-bottom: 1px solid #45a29e;
-  z-index: 10;
-}
-.stat {
-  color: #66fcf1;
-  text-shadow: 0 0 8px #66fcf1;
-  font-weight: bold;
-}
-
-body, html {
-    margin: 0;
-    padding: 0;    
-    width: 100%;
-    height: 100%;
-    overflow: hidden; /* Prevents scrollbars */
-    background: #0b0c10;
-    position: fixed; /* Prevents "pull-to-refresh" on Chrome */
-}
-
-canvas {
-    display: block;
-    touch-action: none; /* CRITICAL: Stops browser from zooming/scrolling */
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-#rotate-overlay {
-    display: none; /* Hidden by default */
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: #0b0c10;
-    color: #66fcf1;
-    z-index: 9999;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    font-family: monospace;
-}
-
-/* Media Query: Show only if height is greater than width */
-@media (orientation: portrait) {
-    #rotate-overlay {
-        display: flex;
-    }
-}
-
-.phone-icon {
-    font-size: 50px;
-    margin-bottom: 20px;
-    animation: rotateDevice 2s infinite;
-}
-
-@keyframes rotateDevice {
-    0% { transform: rotate(0deg); }
-    50% { transform: rotate(-90deg); }
-    100% { transform: rotate(0deg); }
+  display: block;
+  touch-action: none;
 }

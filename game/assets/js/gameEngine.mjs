@@ -34,10 +34,10 @@ class AbyssEngine {
       this.audioManager.start();
     });
     window.addEventListener("keyup", (e) => (this.keys[e.code] = false));
-    // Add a Touch Listener to your canvas
     this.canvas.addEventListener(
       "touchstart",
       (e) => {
+        this.audioManager.start();
         this.isTouching = true;
         const t = e.touches[0];
 
