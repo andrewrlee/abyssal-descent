@@ -79,14 +79,14 @@ export class Sonar {
     ctx.save();
     ctx.globalAlpha = (1 - this.sonarRadius / this.sonarMax) * 0.15;
     ctx.strokeStyle = "#45a29e";
-    for (let i = 0; i < 800; i += 40) {
+    for (let i = 0; i < 900; i += 40) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
-      ctx.lineTo(i, 600);
+      ctx.lineTo(i, 400);
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(0, i);
-      ctx.lineTo(800, i);
+      ctx.lineTo(900, i);
       ctx.stroke();
     }
     ctx.restore();

@@ -13,8 +13,8 @@ class AbyssEngine {
 
     // --- Ghosting Canvas (Persistence) ---
     this.ghostCanvas = document.createElement("canvas");
-    this.ghostCanvas.width = 800;
-    this.ghostCanvas.height = 600;
+    this.ghostCanvas.width = 900;
+    this.ghostCanvas.height = 400;
     this.ghostCtx = this.ghostCanvas.getContext("2d");
 
     this.sub = new Submarine(60, 60);
@@ -76,47 +76,9 @@ class AbyssEngine {
       this.sub.speed = 0;
     });
 
-    document.getElementById("start-btn").addEventListener("click", () => {
-      this.enterFullscreen();
-    });
     this.loop();
   }
 
-  enterFullscreen() {
-    const doc = window.document;
-    const docEl = doc.documentElement;
-
-    const requestFullScreen =
-      docEl.requestFullscreen ||
-      docEl.mozRequestFullScreen ||
-      docEl.webkitRequestFullScreen ||
-      docEl.msRequestFullscreen;
-
-    if (requestFullScreen) {
-      requestFullScreen.call(docEl);
-    }
-  }
-
-  resizeCanvas() {
-    const dpr = window.devicePixelRatio || 1;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    // Set the internal drawing resolution (Sharpness)
-    this.canvas.width = width * dpr;
-    this.canvas.height = height * dpr;
-
-    // Set the CSS display size (Layout)
-    this.canvas.style.width = width + "px";
-    this.canvas.style.height = height + "px";
-
-    // Scale the context so 1 unit = 1 pixel regardless of DPR
-    this.ctx.scale(dpr, dpr);
-
-    // Update your game constants
-    // WIDTH = width;
-    // HEIGHT = height;
-  }
   update() {
     if (this.keys["Space"]) {
       if (this.sonar.triggerSonar(this.canvas)) {
@@ -157,7 +119,7 @@ class AbyssEngine {
 
     // Phosphor decay on Ghost Canvas
     this.ghostCtx.fillStyle = "rgba(0, 0, 0, 0.8)";
-    this.ghostCtx.fillRect(0, 0, 800, 600);
+    this.ghostCtx.fillRect(0, 0, 900, 400);
 
     this.levelManager.checkWinCondition();
   }
@@ -170,7 +132,7 @@ class AbyssEngine {
 
     // 2. Background
     this.ctx.fillStyle = "#01050a";
-    this.ctx.fillRect(0, 0, 800, 600);
+    this.ctx.fillRect(0, 0, 900, 400);
 
     // 4. High-Contrast Sonar Ignition
     this.sonar.draw(this.levelManager, this.ctx, this.ghostCtx, this.sub);
