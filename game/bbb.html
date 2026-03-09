@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none, viewport-fit=cover">
+    <title>Abyssal Descent: The Vertical Trench</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100dvh; overflow: hidden; background: #05080a; position: fixed; font-family: 'Courier New', Courier, monospace; }
+        canvas { display: block; touch-action: none; }
+        #ui { position: absolute; top: 20px; width: 100%; text-align: center; color: #66fcf1; pointer-events: none; text-shadow: 0 0 5px #000; }
+        #depth-counter { font-size: 24px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="depth-counter">DEPTH: 0m</div>
+        <div id="status">HULL: 100% | O2: 100%</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let WIDTH, HEIGHT, DPR;
+        const TILE = 50;
+        const grid = []; // We'll store a vertical strip of tiles
+
+        // --- GAME STATE ---
+        const sub = {
+            x: 0, y: 100, 
+            vx: 0, vy: 0, 
+            angle: Math.PI / 2, // Facing down
+            speed: 0, hull: 100, o2: 100, invuln: 0
+        };
+        const cam = { y: 0 };
+        const joystick = { active: false, x: 0, y: 0, tx: 0, ty: 0, angle: 0, thrust: 0 };
+
+        // --- MAZE GENERATION (Vertical Strip) ---
+        function generateRow(yIndex) {
+            if (grid[yIndex]) return;
+            grid[yIndex] = [];
+            const rowWidth = Math.floor(WIDTH / TILE);
+            const centerPadding = 4; // Width of the safe passage
+            const drift = Math.floor(Math.sin(yIndex * 0.2) * 2); // The tunnel "waves"
+            const center = Math.floor(rowWidth / 2) + drift;
+
+            for (let x = 0; x < rowWidth; x++) {
+                // Walls on sides, clear in center
+                if (x < center - centerPadding || x > center + centerPadding || Math.random() > 0.95) {
+                    grid[yIndex][x] = 1;
+                } else {
+                    grid[yIndex][x] = 0;
+                }
+            }
+        }
+
+        // --- PHYSICS & COLLISION ---
+        function update() {
+            // 1. Joystick / Input
+            if (joystick.active) {
+                let targetAngle = joystick.angle;
+                let diff = targetAngle - sub.angle;
+                while(diff < -Math.PI) diff += Math.PI*2;
+                while(diff > Math.PI) diff -= Math.PI*2;
+                sub.angle += diff * 0.1;
+                
+                const accel = 0.15 * joystick.thrust;
+                sub.vx += Math.cos(sub.angle) * accel;
+                sub.vy += Math.sin(sub.angle) * accel;
+            }
+
+            // 2. Gravity & Friction (The "Sinking" feel)
+            sub.vy += 0.02; // Constant sink
+            sub.vx *= 0.95;
+            sub.vy *= 0.95;
+
+            // 3. Movement & Collision
+            let nx = sub.x + sub.vx;
+            let ny = sub.y + sub.vy;
+
+            const tx = Math.floor(nx / TILE);
+            const ty = Math.floor(ny / TILE);
+
+            if (grid[ty] && grid[ty][tx] === 1) {
+                // Collision!
+                if (sub.invuln <= 0) {
+                    sub.hull -= 10;
+                    sub.invuln = 40;
+                    if(window.navigator.vibrate) window.navigator.vibrate(50);
+                }
+                sub.vx *= -0.8;
+                sub.vy *= -0.8;
+            } else {
+                sub.x = nx;
+                sub.y = ny;
+            }
+
+            // 4. Camera & Generation
+            // Camera follows sub, keeping it roughly 1/3rd down the screen
+            const targetCamY = sub.y - HEIGHT * 0.3;
+            cam.y += (targetCamY - cam.y) * 0.1;
+
+            // Generate rows ahead of the sub
+            const currentTileY = Math.floor(sub.y / TILE);
+            for(let i = 0; i < 20; i++) generateRow(currentTileY + i);
+
+            // 5. Vitals
+            sub.o2 -= 0.005;
+            if (sub.invuln > 0) sub.invuln--;
+            
+            document.getElementById('depth-counter').innerText = `DEPTH: ${Math.floor(sub.y/10)}m`;
+            document.getElementById('status').innerText = `HULL: ${Math.max(0, sub.hull)}% | O2: ${Math.floor(sub.o2)}%`;
+        }
+
+        // --- DRAWING ---
+        function draw() {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(DPR, DPR);
+            ctx.fillStyle = "#05080a";
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            ctx.translate(0, -cam.y);
+
+            // Draw Maze
+            ctx.fillStyle = "#1a222d";
+            ctx.strokeStyle = "#45a29e";
+            const startY = Math.floor(cam.y / TILE);
+            const endY = startY + Math.ceil(HEIGHT / TILE) + 1;
+
+            for (let y = startY; y < endY; y++) {
+                if (!grid[y]) continue;
+                for (let x = 0; x < grid[y].length; x++) {
+                    if (grid[y][x] === 1) {
+                        ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+                        ctx.strokeRect(x * TILE, y * TILE, TILE, TILE);
+                    }
+                }
+            }
+
+            // Draw Rickety Sub
+            ctx.save();
+            ctx.translate(sub.x, sub.y);
+            ctx.rotate(sub.angle);
+            
+            // Flicker if damaged
+            if (sub.invuln % 4 < 2) {
+                ctx.fillStyle = "#1f2833";
+                ctx.strokeStyle = "#66fcf1";
+                ctx.beginPath(); ctx.ellipse(0, 0, 18, 10, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                // Conning tower
+                ctx.fillRect(-4, -12, 8, 6); ctx.strokeRect(-4, -12, 8, 6);
+                // Torch Porthole
+                ctx.fillStyle = "#66fcf1";
+                ctx.beginPath(); ctx.arc(12, 0, 3, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.restore();
+
+            // Draw Joystick Overlay
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(DPR, DPR);
+            if (joystick.active) {
+                ctx.strokeStyle = "rgba(102, 252, 241, 0.2)";
+                ctx.beginPath(); ctx.arc(joystick.x, joystick.y, 50, 0, Math.PI*2); ctx.stroke();
+                ctx.fillStyle = "rgba(102, 252, 241, 0.4)";
+                ctx.beginPath(); ctx.arc(joystick.tx, joystick.ty, 20, 0, Math.PI*2); ctx.fill();
+            }
+        }
+
+        // --- ENGINE ---
+        function resize() {
+            DPR = window.devicePixelRatio || 1;
+            WIDTH = window.innerWidth;
+            HEIGHT = window.innerHeight;
+            canvas.width = WIDTH * DPR;
+            canvas.height = HEIGHT * DPR;
+            canvas.style.width = WIDTH + "px";
+            canvas.style.height = HEIGHT + "px";
+            sub.x = WIDTH / 2; // Start in center
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // Events
+        window.addEventListener('resize', resize);
+        canvas.addEventListener('touchstart', e => {
+            const t = e.touches[0];
+            joystick.active = true;
+            joystick.x = joystick.tx = t.clientX;
+            joystick.y = joystick.ty = t.clientY;
+        });
+        canvas.addEventListener('touchmove', e => {
+            if (!joystick.active) return;
+            const t = e.touches[0];
+            const dx = t.clientX - joystick.x;
+            const dy = t.clientY - joystick.y;
+            const dist = Math.min(Math.hypot(dx, dy), 50);
+            joystick.angle = Math.atan2(dy, dx);
+            joystick.thrust = dist / 50;
+            joystick.tx = joystick.x + Math.cos(joystick.angle) * dist;
+            joystick.ty = joystick.y + Math.sin(joystick.angle) * dist;
+        }, { passive: false });
+        canvas.addEventListener('touchend', () => joystick.active = false);
+
+        resize();
+        loop();
+    </script>
+</body>
+</html>
